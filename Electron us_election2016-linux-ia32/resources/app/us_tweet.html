@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+<style>
+      html, body {
+        height: 100%;
+        overflow:hidden;
+        background-color: black;
+        margin: 0;
+        padding: 0;
+      }
+    svg {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    /* padding-bottom: 100%;  aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
+}
+h1 {color: #f9fafb;
+text-shadow: #d2d9df 1px 1px 0;}
+
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+      .free-wall {
+      		margin: 15px;
+			}
+			.brick {
+				width: 200px;
+				margin: 0px;
+				padding: 0px;
+				display: block;
+			}
+			.info {
+				padding: 15px;
+				color: #333;
+			}
+      #staytweet  {position:absolute;left:0;top:100px; z-index: 500;}
+      #leavetweet {position:absolute;right:0;top:100px; z-index: 500;}
+       #stayhead {position:absolute;left:0;top:0;}
+      #leavehead {position:absolute;right:0;top:0;}
+</style>
+
+
+
+	<!-- External Resources-->
+
+	<script>window.twttr = (function(d, s, id) {
+    //width:2500px; width:2500px; <meta http-equiv="refresh" content="60000">
+  		var js, fjs = d.getElementsByTagName(s)[0],
+    	t = window.twttr || {};
+  		if (d.getElementById(id)) return t;
+  		js = d.createElement(s);
+  		js.id = id;
+  		js.src = "https://platform.twitter.com/widgets.js";
+  		fjs.parentNode.insertBefore(js, fjs);
+
+  		t._e = [];
+  		t.ready = function(f) {
+    	t._e.push(f);
+  		};
+
+  		return t;
+		}(document, "script", "twitter-wjs"));
+	</script>
+
+
+
+
+  <!-- Insert this line above script imports  -->
+<script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+
+<!-- normal script imports etc  -->
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="js/freewall.js" type="text/javascript"></script>
+
+<!-- Insert this line after script imports -->
+<script>if (window.module) module = window.module;</script>
+
+
+</head>
+
+<body>
+<script>
+
+var margin = {top: 0, right: 0, bottom: 0, left: 0};
+    //width = 6400 - margin.left - margin.right,
+    //height = 900 - margin.top - margin.bottom;
+var width = window.innerWidth;
+var height = window.innerHeight;
+
+var tweet_num = Math.floor(width/200);
+tweet_num =  Math.floor(tweet_num/2);
+if (tweet_num > 1){
+  tweet_num = tweet_num - 1;
+}
+
+if(width == 6400)
+{
+  tweet_num = 10;
+}
+if(height == 800)
+{
+  //height = 900;
+}
+
+console.log("width", width);
+console.log("height", height);
+console.log("tweet_num", tweet_num);
+
+//var state = '';
+
+//var y = d3.time.scale()
+    //.range([height, 0]);
+
+var y = d3.scale.ordinal()
+    .rangeRoundBands([height, 0]);
+
+var x = d3.scale.linear()
+    .rangeRound([0, width]);
+
+var color = d3.scale.ordinal()
+    .range(["#000099", "#000000", "#CF142B"]);
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .tickFormat(d3.format(".2s"));
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", "0 0 " + width + " " + height ) //0 80
+    .attr("preserveAspectRatio", "xMinYMin meet")
+  .append("g");
+    //.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+//http://elections.huffingtonpost.com/pollster/api/charts/2016-new-york-president-trump-vs-clinton.csv
+//data/national_poll.csv
+d3.csv("data/national_poll.csv", function(error, data) {
+  if (error) throw error;
+
+  //data = data.smoothedData;
+
+ /* data.forEach(function(d) {
+    d.date = new Date(d.date);
+  });
+  */
+
+  //color.domain(d3.keys(data[0]).filter(function(key) { return key !== "date"; }));
+  //color.domain(["clinton", "undecided", "trump"]);
+  color.domain(["clinton", "undecided", "trump"]);
+  for (var j = 0; j < data.length; j++)  {
+    //console.log("clinton", data[j].clinton);
+    //console.log("trump", data[j].trump);
+    var total = parseInt(data[j].clinton) + parseInt(data[j].trump);
+      //console.log("total", total);
+     data[j].undecided = 100 - total;
+
+  }
+  console.log("undecided", data[0].undecided);
+	//color.domain(d3.keys(data[0]).filter(function(key) { return ((key !== "date") && (key !== "method") && (key !== "pollOfPolls")); }));
+  data.forEach(function(d) {
+    var y0 = 0;
+    d.votes = color.domain().map(function(name) { return {name: name, y0: y0, y1: y0 += +d[name]}; });
+    d.total = d.votes[d.votes.length - 1].y1;
+  });
+
+  //data.sort(function(a, b) { return b.total - a.total; });
+  //var testY = d3.extent(data, function(d) { return d.date; });
+  //y.domain(d3.extent(data, function(d) { return d.date; }));
+   y.domain(data.map(function(d) { return d.date; }));
+
+
+  x.domain([0, 100]);
+
+  /*svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+*/
+//end of csv
+
+
+  var testdate = data[0].date;
+  var test = y(data[0].date);
+
+  var state = svg.selectAll(".state")
+      .data(data)
+      .enter().append("g")
+      .attr("class", "g")
+      .attr("transform", function(d) { return "translate(0," + y(d.date) + ")"; });
+
+
+  state.selectAll("rect")
+      .data(function(d) { return d.votes; })
+      .enter().append("rect")
+      .attr("height", height/data.length)
+      .attr("x", function(d) { return x(d.y0); })
+      .attr("width", function(d) { return x(d.y1) - x(d.y0); })
+      .style("fill", function(d) { return color(d.name); });
+
+      svg.append("svg:line")          // attach a line
+    .style("stroke", "white")  // colour the line
+    .style("stroke-width", "5")  // colour the line
+    .attr("x1", width/2)     // x position of the first end of the line
+    .attr("y1", 0)      // y position of the first end of the line
+    .attr("x2", width/2)     // x position of the second end of the line
+    .attr("y2", height);
+
+
+
+});
+
+</script>
+
+
+<div id="stayhead"><span style="font-size:x-large;color: #f9fafb;text-shadow: #d2d9df 1px 1px 0;"></span></div>
+<div id="staytweet">
+
+</div>
+
+<div id="leavehead"><span style="font-size:x-large;color: #f9fafb;text-shadow: #d2d9df 1px 1px 0;" ></span></div>
+<div id="leavetweet">
+</div>
+
+
+<script>
+
+//#leave-count-hold {position:absolute;right:0;width:150px;top:50px;font-size:x-large;background-color: lightgrey;}
+//#stay-count-hold {position:absolute;left:0;width:150px;top:50px;font-size:x-large;background-color: lightgrey;}
+
+	var socket = io.connect('http://sociamvm-app-001.ecs.soton.ac.uk:3705');
+  $( "#stayhead" ).append( '<H1 style="position:absolute;left:'+width/4+'px;z-index: 5000;"><strong>#Clinton</strong></H1>');
+  $( "#leavehead" ).append( '<H1 style="position:absolute;right:'+width/4+'px;z-index: 5000;"><strong>#Trump</strong></H1>');
+    socket.emit("load_data","");
+
+    socket.on('dem-count', function (tweet) {
+   	    //$("#stayhead span").html(tweet);
+        $("#stayhead").empty();
+        $( "#stayhead" ).append( '<H1 style="position:absolute;left:'+width/4+'px;z-index: 5000;"><strong>#Clinton<br>'+tweet+'</strong></H1>');
+   	});
+
+   	socket.on('rep-count', function (tweet) {
+   	    //$("#leavehead span").html(tweet);
+        $("#leavehead").empty();
+        $( "#leavehead" ).append( '<H1 style="position:absolute;right:'+width/4+'px;z-index: 5000;"><strong>#Trump<br>'+tweet+'</strong></H1>');
+   	});
+
+    console.log("testing if we load data");
+
+
+
+	socket.on('dem-tweets', function (tweets) {
+		console.log("DEM@@@@@@@@@DEM-tweets");
+		console.log("@@@@@@@@@DEM Size is @@@@ ", tweets["statuses"].length);
+        //staytweet
+        $("#staytweet").empty();
+
+    var dup_tweets = tweets["statuses"].filter(function(elem, index, self) {
+    return index == self.indexOf(elem);
+    });
+    console.log("@@@@@@@@@DEM Size is now after dup@@@@ ", dup_tweets.length);
+ 		for(var i=0; i < tweet_num; i++) {
+ 			//var data = JSON.parse(tweets["statuses"][i]);
+ 			var data = dup_tweets[i];
+ 			//$("#tweet"+i).empty();
+ 			$( "#staytweet" ).append( '<div id="tweet'+i+'" style="display: inline;"></div>');
+ 			twttr.widgets.createTweet(
+  				data.id_str,
+  				document.getElementById('tweet'+i),
+  				{
+    				align: 'left',
+    				width: 80,
+            height: '400px',
+  				})
+  				.then(function (el) {
+    				console.log("@@@@@@@DEM Tweet has been displayed.");
+  				});
+
+ 		}
+
+ 		twttr.widgets.load(
+  			document.getElementById("staytweet")
+
+		);
+
+ 	});///socket stay
+
+
+ 	socket.on('rep-tweets', function (tweets) {
+		console.log("REP########REP-data");
+    console.log("####REP Size is ##", tweets["statuses"].length);
+
+    var dup_tweets = tweets["statuses"].filter(function(elem, index, self) {
+    return index == self.indexOf(elem);
+    });
+    console.log("####REP Size is now after DUP##", dup_tweets.length);
+         $("#leavetweet").empty();
+        //$( "#leavetweet" ).append( '<H1 style="right:'+width/4+';z-index: 1000;"><strong>#Trump</strong></H1>' );
+ 		for(var i=0; i< tweet_num; i++) {
+ 			var data = dup_tweets[i];
+      //console.log("########rep tweet",tweets["statuses"][i] );
+ 			//$("#Ltweet"+i).empty();
+ 			$( "#leavetweet" ).append( '<div id="Ltweet'+i+'" style="display: inline;"></div>' );
+ 			//console.log("leave-data:", data);
+ 			twttr.widgets.createTweet(
+  				data.id_str,
+  				document.getElementById('Ltweet'+i),
+  				{
+    				align: 'left',
+    				width: 100,
+            height: '400px',
+  				})
+  				.then(function (el) {
+    				console.log("@@@@@@@@@@@@@@@ev's REP Tweet has been displayed.");
+  				});
+ 		}
+
+ 		twttr.widgets.load(
+  			document.getElementById("leavetweet")
+
+		);
+
+ 	});
+
+//////Changing polling state
+  socket.on('change_state', function (poll_uri) {
+    console.log("changed poll");
+
+    d3.csv(poll_uri, function(error, data) {
+      if (error) throw error;
+      color.domain(["Clinton", "undecided", "Trump"]);
+      console.log("loaded data -  changed data length is ",data.length );
+      for (var j = 0; j < data.length; j++)  {
+        //console.log("clinton", data[j].Clinton);
+        //console.log("trump", data[j].Trump);
+        var total = parseInt(data[j].Clinton) + parseInt(data[j].Trump);
+          //console.log("total", total);
+         data[j].undecided = 100 - total;
+         //console.log("undecided", data[j].undecided);
+      }
+      console.log("@@@@@@@@@@@clinton", data[0].Clinton);
+      console.log("@@@@@@@@trump", data[0].Trump);
+      console.log("undecided", data[0].undecided);
+    	//color.domain(d3.keys(data[0]).filter(function(key) { return ((key !== "date") && (key !== "method") && (key !== "pollOfPolls")); }));
+      data.forEach(function(d) {
+        var y0 = 0;
+        d.votes = color.domain().map(function(name) { return {name: name, y0: y0, y1: y0 += +d[name]}; });
+        d.total = d.votes[d.votes.length - 1].y1;
+      });
+
+      y.domain(data.map(function(d) { return d.end_date; }));
+      x.domain([0, 100]);
+
+      var testdate = data[0].end_date;
+      var test = y(data[0].end_date);
+
+      //svg.selectAll("*").remove();
+      d3.select("body").select("svg").remove();
+
+      //console.log("loaded data svg is ",svg);
+
+      var svg = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .attr("viewBox", "0 0 " + width + " " + height )
+          .attr("preserveAspectRatio", "xMinYMin meet")
+        .append("g");
+
+      console.log("After data svg is ",svg);
+
+
+      var state = svg.selectAll(".state")
+          .data(data)
+          .enter().append("g")
+          .attr("class", "g")
+          .attr("transform", function(d) { return "translate(0," + y(d.end_date) + ")"; });
+
+
+      state.selectAll("rect")
+          .data(function(d) { return d.votes; })
+          .enter().append("rect")
+          .attr("height", height/data.length)
+          .attr("x", function(d) { return x(d.y0); })
+          .attr("width", function(d) { return x(d.y1) - x(d.y0); })
+          .style("fill", function(d) { return color(d.name); });
+
+          svg.append("svg:line")          // attach a line
+        .style("stroke", "white")  // colour the line
+        .style("stroke-width", "5")  // colour the line
+        .attr("x1", width/2)     // x position of the first end of the line
+        .attr("y1", 0)      // y position of the first end of the line
+        .attr("x2", width/2)     // x position of the second end of the line
+        .attr("y2", height);
+      });
+  });
+
+
+</script>
+
+
+</body>
