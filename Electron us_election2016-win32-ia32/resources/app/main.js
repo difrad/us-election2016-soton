@@ -89,7 +89,15 @@ app.on('ready', function () {
 
   globalShortcut.register('Escape', function () {
     app.quit()
-  })
+  });
+
+  globalShortcut.register('Space', () => {
+   //mainWindow.show();
+   wallWindow.reload();
+   floorWindow.reload();
+ });
+
+
 
 
 
