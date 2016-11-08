@@ -29,8 +29,8 @@ function createWindow () {
     floorWindow = new BrowserWindow({
       x: externalDisplay.bounds.x + 50,
       y: externalDisplay.bounds.y + 50,
-      fullscreen: true,
-      frame: false
+      fullscreen: false,
+      frame: true
     });
 
     floorWindow.loadURL(`file://${__dirname}/us_map.html`)
@@ -40,7 +40,7 @@ function createWindow () {
       // when you should delete the corresponding element.
       floorWindow = null
     })
-    wallWindow = new BrowserWindow({fullscreen: true, frame: false, x:0, y:0});
+    wallWindow = new BrowserWindow({fullscreen: false, frame: true, x:0, y:0});
   }
 
   else {
